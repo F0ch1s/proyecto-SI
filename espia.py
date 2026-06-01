@@ -1,10 +1,4 @@
 """
-============================================================
-  ESPIA (sniffer) — Demostracion de trafico cifrado
-  Curso: Seguridad Informatica
-  Persona 2 — Evidencia para la seccion de Resultados
-============================================================
-
 Que hace este archivo:
   Simula a un ATACANTE que intercepta la red entre el cliente y
   el servidor (un ataque de intermediario o "Man-in-the-Middle").

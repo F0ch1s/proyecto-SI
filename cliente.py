@@ -1,11 +1,4 @@
 """
-============================================================
-  CLIENTE — Chat cifrado cliente/servidor
-  Curso: Seguridad Informatica
-  Persona 2 — Aplicacion telematica
-============================================================
-
-Que hace este archivo:
   Se conecta al servidor. Al conectarse:
     1. Acuerdan una clave secreta con Diffie-Hellman (sin enviarla).
     2. A partir de ahi, TODOS los mensajes viajan cifrados con

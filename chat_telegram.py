@@ -1,11 +1,4 @@
 """
-============================================================
-  CHAT CIFRADO POR TELEGRAM  (Opcion 2 - dos personas)
-  Curso: Seguridad Informatica
-  Persona 2 — Aplicacion telematica sobre Telegram
-============================================================
-
-Que hace este archivo:
   Permite que DOS personas chateen a traves de un bot de Telegram,
   pero con los mensajes CIFRADOS usando el algoritmo Feistel-X.
   Telegram solo transporta texto cifrado: nunca ve el mensaje real.
