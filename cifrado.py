@@ -8,14 +8,14 @@ Funciones a exportar para el equipo:
   - descifrar(datos, clave) -> devuelve el texto original
 """
 
-import hashlib  # libreria estandar de Python para SHA-256 (derivar subclaves)
+import hashlib  # para SHA-256 (derivar subclaves)
 
 # ============================================================
 # 1. LA S-BOX (tabla de sustitucion)
 # ============================================================
-# Una S-box es una tabla de 256 valores que cambia cada byte por otro.
-# Sirve para crear "confusion": que no haya relacion obvia entre
-# el mensaje y el cifrado. Esta es la misma S-box estandar de AES.
+# Tabla de 256 valores que cambia cada byte por otro.
+# Crea "confusion": no hay relacion obvia entre mensaje y cifrado.
+# Se usa la S-Box estandar de AES por sus propiedades matematicas probadas.
 
 SBOX = [
     0x63,0x7c,0x77,0x7b,0xf2,0x6b,0x6f,0xc5,0x30,0x01,0x67,0x2b,0xfe,0xd7,0xab,0x76,
@@ -36,117 +36,183 @@ SBOX = [
     0x8c,0xa1,0x89,0x0d,0xbf,0xe6,0x42,0x68,0x41,0x99,0x2d,0x0f,0xb0,0x54,0xbb,0x16,
 ]
 
+
 # ============================================================
-# 2. FUNCIONES AUXILIARES (piezas pequeñas)
+# 2. FUNCIONES AUXILIARES
 # ============================================================
 
 def _rotar_izquierda(byte, n):
-    """Mueve los bits de un byte n posiciones a la izquierda (en circulo).
-    Esto crea 'difusion': revuelve los bits para esparcir la informacion."""
+    """Rota bits a la izquierda — aporta difusion al cifrado."""
     return ((byte << n) | (byte >> (8 - n))) & 0xFF
 
 
 def _rotar_derecha(byte, n):
-    """Lo contrario de rotar_izquierda. Se usa para deshacer (descifrar)."""
+    """Rota bits a la derecha — deshace la rotacion izquierda al descifrar."""
     return ((byte >> n) | (byte << (8 - n))) & 0xFF
 
 
 def _permutar(bloque):
-    """Revuelve los bits de cada byte del medio-bloque (difusion)."""
+    """Permutacion: cada byte rota segun su posicion — crea difusion."""
     return bytes(_rotar_izquierda(b, (i % 7) + 1) for i, b in enumerate(bloque))
 
 
 def _derivar_subclaves(clave_maestra, rondas=4):
-    """A partir de UNA clave, genera 4 subclaves distintas (una por ronda).
-    Usa SHA-256 con el numero de ronda para que cada subclave sea diferente."""
+    """
+    Genera 4 subclaves distintas a partir de la clave maestra.
+    Usa SHA-256(clave + numero_de_ronda) para que cada subclave sea diferente.
+    Solo se toman los primeros 4 bytes del hash resultante.
+    """
     subclaves = []
     for r in range(rondas):
         h = hashlib.sha256(clave_maestra + bytes([r])).digest()
-        subclaves.append(h[:4])  # tomamos 4 bytes (medio bloque)
+        subclaves.append(h[:4])
     return subclaves
-def _funcion_F(medio, subclave):
-    """El corazon del cifrado. Toma medio bloque (4 bytes) y lo transforma:
-       1. Sustituye cada byte con la S-box  (confusion)
-       2. Permuta los bits                  (difusion)
-       3. Combina con la subclave via XOR   (secreto)
-    """
-    sustituido = bytes(SBOX[b] for b in medio)            # paso 1
-    permutado = _permutar(sustituido)                      # paso 2
-    mezclado = bytes(permutado[i] ^ subclave[i] for i in range(4))  # paso 3
-    return mezclado
-# ============================================================
-# 3. CIFRADO Y DESCIFRADO DE UN BLOQUE (8 bytes)
-# ============================================================
-def _cifrar_bloque(bloque, clave):
-    """Cifra exactamente 8 bytes usando la red de Feistel de 4 rondas."""
-    subclaves = _derivar_subclaves(clave)
-    L = bloque[:4]   # mitad izquierda
-    R = bloque[4:]   # mitad derecha
-    for r in range(4):                       # 4 rondas
-        nueva_R = bytes(L[i] ^ _funcion_F(R, subclaves[r])[i] for i in range(4))
-        L = R          # la derecha pasa a ser la nueva izquierda
-        R = nueva_R    # y calculamos la nueva derecha
-    return L + R
 
-def _descifrar_bloque(bloque, clave):
-    """Deshace _cifrar_bloque. Usa las subclaves en orden INVERSO."""
+
+def _funcion_F(medio, subclave):
+    """
+    Funcion de ronda F — el corazon del cifrado.
+    Aplica 3 operaciones en cadena sobre 4 bytes:
+      1. S-Box: sustitucion no lineal  (confusion)
+      2. Permutacion circular de bits  (difusion)
+      3. XOR con la subclave           (secreto)
+    """
+    sustituido = bytes(SBOX[b] for b in medio)                       # confusion
+    permutado  = _permutar(sustituido)                               # difusion
+    mezclado   = bytes(permutado[i] ^ subclave[i] for i in range(4)) # secreto
+    return mezclado
+
+
+# ============================================================
+# 3. CIFRADO DE UN BLOQUE (8 bytes) — 4 rondas Feistel
+# ============================================================
+
+def _cifrar_bloque(bloque, clave):
+    """
+    Cifra exactamente 8 bytes con la red de Feistel.
+
+    En cada ronda:
+      nueva_R = L XOR F(R, subclave)
+      intercambiar: nueva_L = R,  nueva_R = nueva_R
+
+    Las subclaves se usan en orden NORMAL: K0, K1, K2, K3
+    """
     subclaves = _derivar_subclaves(clave)
     L = bloque[:4]
     R = bloque[4:]
-    for r in reversed(range(4)):             # rondas al reves: 3,2,1,0
+    for r in range(4):
+        nueva_R = bytes(L[i] ^ _funcion_F(R, subclaves[r])[i] for i in range(4))
+        L = R
+        R = nueva_R
+    return L + R
+
+
+# ============================================================
+# 4. DESCIFRADO DE UN BLOQUE (8 bytes) — rondas al reves
+# ============================================================
+
+def _descifrar_bloque(bloque, clave):
+    """
+    Deshace el cifrado aplicando las mismas operaciones pero con
+    las subclaves en orden INVERSO: K3, K2, K1, K0.
+
+    Esta es la elegancia de Feistel: el descifrado usa el mismo
+    proceso que el cifrado — no hace falta invertir la S-Box
+    ni ninguna operacion individual.
+
+    En cada ronda (al reves):
+      R_anterior = L
+      L_anterior = R XOR F(R_anterior, subclave)
+      restaurar:  L = L_anterior,  R = R_anterior
+    """
+    subclaves = _derivar_subclaves(clave)
+    L = bloque[:4]
+    R = bloque[4:]
+    for r in reversed(range(4)):      # orden inverso: 3, 2, 1, 0
         R_anterior = L
         L_anterior = bytes(R[i] ^ _funcion_F(R_anterior, subclaves[r])[i] for i in range(4))
         L = L_anterior
         R = R_anterior
     return L + R
+
+
 # ============================================================
-# 4. PADDING (rellenar para completar bloques de 8)
+# 5. PADDING PKCS#7
 # ============================================================
-# Los mensajes casi nunca miden exacto un multiplo de 8 bytes.
-# El padding rellena el final para completar, y se quita al descifrar.
-# Usamos el estandar PKCS#7.
+# Los mensajes raramente miden multiplo de 8 bytes.
+# PKCS#7: se rellena con N bytes de valor N, donde N = bytes que faltan.
+# Al descifrar, el ultimo byte indica cuantos bytes quitar.
 
 def _agregar_padding(datos):
+    """Agrega padding PKCS#7 para completar multiplo de 8 bytes."""
     falta = 8 - (len(datos) % 8)
     return datos + bytes([falta] * falta)
 
 
 def _quitar_padding(datos):
+    """Elimina el padding PKCS#7 al descifrar."""
     falta = datos[-1]
     return datos[:-falta]
+
+
 # ============================================================
-# 5. FUNCIONES PRINCIPALES (las que usan los demas integrantes)
+# 6. FUNCIONES PRINCIPALES — las que usan los demas integrantes
 # ============================================================
+
 def cifrar(texto, clave):
-    """Cifra un mensaje de texto completo.
-       texto: el mensaje (str)
-       clave: la clave secreta (bytes)
-       devuelve: los datos cifrados (bytes)"""
+    """
+    Cifra un mensaje de texto completo usando Feistel-X.
+
+    Parametros:
+      texto : str   — el mensaje a cifrar
+      clave : bytes — la clave secreta (32 bytes recomendado)
+
+    Retorna:
+      bytes — los datos cifrados (ilegibles sin la clave)
+
+    Uso:
+      clave  = hashlib.sha256(b"mi_contrasena").digest()
+      cifrado = cifrar("Hola mundo", clave)
+    """
     datos = _agregar_padding(texto.encode("utf-8"))
     resultado = b""
-    for i in range(0, len(datos), 8):          # de 8 en 8 bytes
+    for i in range(0, len(datos), 8):
         resultado += _cifrar_bloque(datos[i:i+8], clave)
     return resultado
 
 
 def descifrar(datos, clave):
-    """Descifra datos y devuelve el texto original.
-       datos: los datos cifrados (bytes)
-       clave: la misma clave usada para cifrar (bytes)
-       devuelve: el mensaje original (str)"""
+    """
+    Descifra datos y devuelve el texto original.
+
+    Parametros:
+      datos : bytes — los datos cifrados (salida de cifrar())
+      clave : bytes — la MISMA clave usada para cifrar
+
+    Retorna:
+      str — el mensaje original
+
+    Uso:
+      texto = descifrar(cifrado, clave)
+
+    IMPORTANTE: si se usa una clave distinta a la del cifrado,
+    el resultado sera texto corrupto o un error.
+    """
     resultado = b""
     for i in range(0, len(datos), 8):
         resultado += _descifrar_bloque(datos[i:i+8], clave)
     return _quitar_padding(resultado).decode("utf-8")
+
 # ============================================================
-# 6. PRUEBA RAPIDA (se ejecuta si corres este archivo directo)
-# ============================================================¿
-if __name__ == "__main__":
+# 7. DEMOSTRACION — se ejecuta al correr este archivo directo
+# ===========================================================
+
+def _demo_automatica():
+    """Prueba automatica: cifra y descifra mensajes predefinidos."""
     print("=" * 55)
-    print("  PRUEBA DEL CIFRADO FEISTEL-X")
+    print(" PRUEBA DEL CIFRADO Y DESCIFRADO FEISTEL-X")
     print("=" * 55)
 
-    # La clave se deriva de una contraseña con SHA-256 (32 bytes)
     clave = hashlib.sha256(b"mi_clave_secreta").digest()
 
     mensajes = [
@@ -155,12 +221,19 @@ if __name__ == "__main__":
         "Mensaje con acentos: aeiou aeiou",
     ]
 
+    todos_ok = True
     for m in mensajes:
-        cifrado = cifrar(m, clave)
+        cifrado    = cifrar(m, clave)
         recuperado = descifrar(cifrado, clave)
+        ok = recuperado == m
+        if not ok:
+            todos_ok = False
         print(f"\nOriginal   : {m}")
         print(f"Cifrado    : {cifrado.hex()}")
         print(f"Descifrado : {recuperado}")
-        assert recuperado == m, "ERROR: no coincide!"
+        print(f"Correcto   : {'SI' if ok else 'ERROR'}")
 
-    print("\n[OK] Todo cifrado y descifrado correctamente.")
+    print("\n" + "=" * 55)
+    print(f"  Resultado: {'TODOS CORRECTOS' if todos_ok else 'HAY ERRORES'}")
+if __name__ == "__main__":
+    _demo_automatica()
