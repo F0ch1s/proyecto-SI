@@ -10,6 +10,7 @@ Funciones a exportar para el equipo:
 
 import hashlib  # para SHA-256 (derivar subclaves)
 
+
 # ============================================================
 # 1. LA S-BOX (tabla de sustitucion)
 # ============================================================
@@ -195,7 +196,7 @@ def descifrar(datos, clave):
     Uso:
       texto = descifrar(cifrado, clave)
 
-    IMPORTANTE: si se usa una clave distinta a la del cifrado,
+    IMPORTANTE: si usas una clave distinta a la del cifrado,
     el resultado sera texto corrupto o un error.
     """
     resultado = b""
@@ -203,14 +204,14 @@ def descifrar(datos, clave):
         resultado += _descifrar_bloque(datos[i:i+8], clave)
     return _quitar_padding(resultado).decode("utf-8")
 
+
 # ============================================================
 # 7. DEMOSTRACION — se ejecuta al correr este archivo directo
 # ===========================================================
-
 def _demo_automatica():
     """Prueba automatica: cifra y descifra mensajes predefinidos."""
     print("=" * 55)
-    print(" PRUEBA DEL CIFRADO Y DESCIFRADO FEISTEL-X")
+    print("   PRUEBA DEL CIFRADO Y DESCIFRADO FEISTEL-X")
     print("=" * 55)
 
     clave = hashlib.sha256(b"mi_clave_secreta").digest()
@@ -219,8 +220,9 @@ def _demo_automatica():
         "Hola equipo!",
         "Seguridad Informatica 2025",
         "Mensaje con acentos: aeiou aeiou",
+        "prueba",
+        "HOLA",
     ]
-
     todos_ok = True
     for m in mensajes:
         cifrado    = cifrar(m, clave)
@@ -235,5 +237,33 @@ def _demo_automatica():
 
     print("\n" + "=" * 55)
     print(f"  Resultado: {'TODOS CORRECTOS' if todos_ok else 'HAY ERRORES'}")
+    print("=" * 55)
+
+
+def _demo_interactiva():
+    """Demo interactiva: el usuario escribe su propio mensaje."""
+    print("\n" + "=" * 55)
+    print("  MODO INTERACTIVO")
+    print("=" * 55)
+    print("Escribe un mensaje para cifrarlo y descifrarlo.")
+    print("Escribe 'salir' para terminar.\n")
+
+    clave = hashlib.sha256(b"mi_clave_secreta").digest()
+
+    while True:
+        texto = input("Mensaje > ").strip()
+        if texto.lower() == "salir":
+            break
+        if not texto:
+            continue
+        cifrado    = cifrar(texto, clave)
+        recuperado = descifrar(cifrado, clave)
+
+        print(f"  Cifrado    : {cifrado.hex()}")
+        print(f"  Descifrado : {recuperado}")
+        print(f"  Correcto   : {'SI' if recuperado == texto else 'ERROR'}\n")
+
+
 if __name__ == "__main__":
     _demo_automatica()
+    _demo_interactiva()
