@@ -32,13 +32,12 @@ from cifrado import cifrar, descifrar
 # ============================================================
 # CONFIGURACION  — CADA PERSONA EDITA ESTAS 3 LINEAS
 # ============================================================
-
 # El token del bot (el mismo para los dos). Tapa esto con **** en el paper.
 TOKEN = "8874725411:AAEmvqDfLV3Q1E-z1MNaey_aD6N7hr4s5WY"
 
 # --- Si eres RODRIGO, deja esto asi: ---
-MI_ID = 5841653022        # tu propio Chat ID
-ID_DESTINO = 1431179602   # el Chat ID de tu compañero (rocko)
+MI_ID = 5841653022  # tu propio Chat ID
+ID_DESTINO = 6191839605   # 
 
 # --- Si eres PIERO, intercambia los numeros: ---
 # MI_ID = 6191839605
