@@ -1,8 +1,6 @@
 # 🔐 Feistel-X — Chat Cifrado
 
 Algoritmo de cifrado propio basado en red de Feistel aplicado a comunicaciones telemáticas.  
-Curso: Seguridad Informática — UCSM Arequipa 2025
-
 ---
 
 ## ⚙️ Requisitos
@@ -149,11 +147,3 @@ Ambas personas deben tener **exactamente la misma frase** para que el descifrado
 
 ---
 
-## 👥 Autores
-
-- Rodrigo Mijael Arenas Ichocan
-- Piero Anthony Cahuana Cabrera
-- Rodrigo Gomez Fernandez
-- Christian Joaquin Romero Bejarano
-
-Universidad Católica de Santa María — Arequipa, Perú — 2025
